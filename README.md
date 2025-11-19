@@ -104,27 +104,3 @@ Deletes uploads folder
 Recreates schema
 
 Clears UI
-
-Backend endpoint:
-
-POST /api/reset
-
-📡 API Endpoints
-Method	Endpoint	Description
-POST	/api/upload	Uploads document
-POST	/api/chat	Sends a query through RAG
-POST	/api/reset	Clears all data
-GET	/	Health check
-🧾 Backend Requirements
-
-requirements.txt example:
-
-fastapi
-uvicorn[standard]
-python-dotenv
-aiofiles
-pydantic-settings
-weaviate-client
-google-generativeai
-pymupdf
-python-docx
