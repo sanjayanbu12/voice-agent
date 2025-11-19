@@ -23,65 +23,9 @@ It uses a RAG (Retrieval-Augmented Generation) pipeline with Weaviate + Gemini 2
 
 💬 Chat UI + RAG pipeline
 
-🏗️ Architecture
-     ┌───────────┐
-     │  React UI │
-     └─────┬─────┘
-           │ Upload file / Ask query
-           ▼
- ┌──────────────────┐
- │   FastAPI API     │
- └──────┬────────────┘
-        │
-        │ store_document()
-        ▼
-  ┌─────────────┐
-  │ Extract Text │  ← PDF / DOCX / TXT
-  └──────┬──────┘
-         │ chunk_text()
-         ▼
-  ┌──────────────────────────┐
-  │ Gemini Embedding Model   │
-  │  (text-embedding-004)    │
-  └──────────┬───────────────┘
-             │ store vectors
-             ▼
-       ┌────────────┐
-       │ Weaviate DB │
-       └─────┬──────┘
-             │ retrieve_similar()
-             ▼
-   ┌────────────────────┐
-   │ Gemini 2.0 Flash    │
-   └────────────────────┘
-
-🗂️ Folder Structure
-voice-agent/
-│
-├── backend/
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   ├── models.py
-│   │   ├── services/
-│   │   │   ├── rag.py
-│   │   │   ├── extractor.py
-│   │   │   ├── embeddings.py
-│   │   │   ├── weaviate_client.py
-│   │   └── uploads/
-│   ├── requirements.txt
-│   └── .env
-│
-└── frontend/
-    ├── src/
-    │   ├── App.jsx
-    │   ├── components/
-    │   │   ├── ChatInterface.jsx
-    │   │   ├── UploadPage.jsx
-    ├── .env
-    ├── package.json
 
 ⚙️ Setup Instructions
+
 🧩 1. Backend Setup (FastAPI)
 Install dependencies:
 cd backend
