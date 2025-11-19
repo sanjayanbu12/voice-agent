@@ -1,36 +1,76 @@
 import React, { useState } from "react";
-import axios from "axios";
 
-export default function UploadPage({ onUploaded }) {
+const UploadPage = () => {
   const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-  const upload = async () => {
-    if (!file) return alert("Choose a file first");
-    setLoading(true);
-    const fdata = new FormData();
-    fdata.append("file", file);
+  const uploadDocument = async () => {
+    if (!file) return alert("Select a file first!");
+
+    setUploading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
     try {
-      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/upload`, fdata, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-      alert("Uploaded successfully");
-      onUploaded();
-    } catch (e) {
-      console.error(e);
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+      alert("Upload success!");
+    } catch (err) {
       alert("Upload failed");
+      console.error(err);
     } finally {
-      setLoading(false);
+      setUploading(false);
+    }
+  };
+
+  const resetDocuments = async () => {
+    if (!confirm("Are you sure? This will delete all uploaded documents.")) return;
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/reset`,
+        { method: "POST" }
+      );
+
+      const data = await res.json();
+      alert(data.message);
+
+      // Clear UI
+      setFile(null);
+    } catch (err) {
+      alert("Reset failed");
+      console.error(err);
     }
   };
 
   return (
-    <div className="upload-area">
-      <h3>Upload document (pdf / docx / txt)</h3>
-      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
-      <div style={{ marginTop: 12 }}>
-        <button className="btn" onClick={upload} disabled={loading}>{loading ? "Uploading..." : "Upload"}</button>
-      </div>
+    <div style={{ padding: "40px" }}>
+      <h2>Upload Document (PDF / DOCX / TXT)</h2>
+
+      <input
+        type="file"
+        onChange={(e) => setFile(e.target.files[0])}
+      />
+
+      <button onClick={uploadDocument} disabled={uploading}>
+        {uploading ? "Uploading..." : "Upload"}
+      </button>
+
+      <button style={{ marginLeft: "20px", background: "red", color: "white" }}
+        onClick={resetDocuments}
+      >
+        Reset All Documents
+      </button>
     </div>
   );
-}
+};
+
+export default UploadPage;

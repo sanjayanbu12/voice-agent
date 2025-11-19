@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .models import ChatRequest
 from .services import rag
-
+from .services.weaviate_client import get_client, ensure_schema
 
 print("LOADED FROM ENV:", settings.WEAVIATE_URL)
 
@@ -23,7 +23,6 @@ origins = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
 ]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -39,7 +38,6 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @app.get("/")
 def root():
     return {"message": "RAG Voice Bot Backend is running."}
-
 
 
 @app.post("/api/upload")
@@ -65,8 +63,7 @@ async def upload_endpoint(file: UploadFile = File(...)):
     except Exception as e:
         print("UPLOAD ERROR:", e)
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Upload failed, see server logs.")
-
+        raise HTTPException(status_code=500, detail="Upload failed. See logs.")
 
 
 @app.post("/api/chat")
@@ -76,7 +73,6 @@ async def chat_endpoint(req: ChatRequest):
         if not query:
             raise HTTPException(status_code=400, detail="Query cannot be empty")
 
-        
         sims = await asyncio.to_thread(rag.retrieve_similar, query, 3, 0.5)
 
         if not sims:
@@ -84,10 +80,7 @@ async def chat_endpoint(req: ChatRequest):
                 "response": "I don't have enough information to answer this from the uploaded document."
             }
 
-        
-        context_texts = "\n\n".join(
-            [f"- {s['text']}" for s in sims if s.get("text") and s["text"].strip()]
-        )
+        context = "\n\n".join([f"- {s['text']}" for s in sims])
 
         prompt = f"""
 Use ONLY the following document contents to answer the user's question.
@@ -95,7 +88,7 @@ If the answer is not present in the content, reply exactly:
 "I don't have enough information to answer this from the uploaded document."
 
 Document Content:
-{context_texts}
+{context}
 
 User Question:
 {query}
@@ -103,20 +96,18 @@ User Question:
 Answer in 2–4 sentences.
 """
 
-        
+      
         def gen_text():
             import google.generativeai as genai
-
             genai.configure(api_key=settings.GEMINI_API_KEY)
-
             model = genai.GenerativeModel("gemini-2.0-flash")
 
             try:
-                response = model.generate_content(
+                resp = model.generate_content(
                     prompt,
                     generation_config={"max_output_tokens": 300},
                 )
-                return response.text
+                return resp.text
             except Exception as e:
                 print("Gemini generation failed:", e)
                 raise
@@ -130,14 +121,42 @@ Answer in 2–4 sentences.
 
         return {"response": answer.strip()}
 
-    except HTTPException:
-        raise
-
     except Exception as e:
         print("CHAT ERROR:", e)
         traceback.print_exc()
         return {"response": "Sorry, something went wrong while generating the answer."}
 
+
+@app.post("/api/reset")
+async def reset_endpoint():
+    try:
+        client, CLASS_NAME = ensure_schema()
+
+        client.schema.delete_class(CLASS_NAME)
+        print(f"Deleted class: {CLASS_NAME}")
+
+        schema = {
+            "class": CLASS_NAME,
+            "vectorizer": "none",
+            "properties": [
+                {"name": "text", "dataType": ["text"]},
+                {"name": "doc_id", "dataType": ["string"]},
+                {"name": "chunk_index", "dataType": ["int"]},
+                {"name": "meta", "dataType": ["text"]},
+            ],
+        }
+        client.schema.create_class(schema)
+        print(f"Recreated class: {CLASS_NAME}")
+
+        shutil.rmtree("uploads", ignore_errors=True)
+        os.makedirs("uploads", exist_ok=True)
+
+        return {"message": "System reset successful."}
+
+    except Exception as e:
+        print("RESET ERROR:", e)
+        traceback.print_exc()
+        return {"message": "Reset failed", "error": str(e)}
 
 
 if __name__ == "__main__":
