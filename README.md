@@ -1,27 +1,186 @@
-# RAG Voice Bot (Gemini embeddings + Weaviate Cloud Service)
+📘 Sanjay Bot — RAG Voice Assistant
 
-This repository contains a full-stack RAG voice bot:
-- Backend: FastAPI, Google Gemini embeddings (`models/text-embedding-004`), Weaviate Cloud Service (WCS)
-- Frontend: React + Vite (voice & text chat, document upload)
-- When the user uploads a document it is vectorized and stored in Weaviate.
-- Queries are answered **only** from the uploaded document. If no relevant content is found the bot replies: "I don't have enough information to answer this from the uploaded document."
+FastAPI + Weaviate Vector DB + Gemini 2.0 Flash + React + Vite
 
----
+An intelligent voice-enabled chatbot that answers questions ONLY from user-uploaded documents (PDF/DOCX/TXT).
+It uses a RAG (Retrieval-Augmented Generation) pipeline with Weaviate + Gemini 2.0.
 
-## Requirements
+✨ Features
 
-- Python 3.11+ (backend)
-- Node.js 18+ (frontend)
-- Weaviate Cloud Service account + API key
-- Google Gemini API key
+📄 Upload PDF / DOCX / TXT
 
----
+🔍 Extracts text + Chunks + Embeds (Gemini text-embedding-004)
 
-## Setup — Backend
+🧠 Stores vectors inside Weaviate Cloud
 
-1. Copy env:
-```bash
+🤖 Queries Gemini 2.0 Flash using ONLY retrieved chunks
+
+🎤 Voice input & voice output
+
+🔁 Reset system to delete all documents
+
+⚡ FastAPI backend + React frontend
+
+💬 Chat UI + RAG pipeline
+
+🏗️ Architecture
+     ┌───────────┐
+     │  React UI │
+     └─────┬─────┘
+           │ Upload file / Ask query
+           ▼
+ ┌──────────────────┐
+ │   FastAPI API     │
+ └──────┬────────────┘
+        │
+        │ store_document()
+        ▼
+  ┌─────────────┐
+  │ Extract Text │  ← PDF / DOCX / TXT
+  └──────┬──────┘
+         │ chunk_text()
+         ▼
+  ┌──────────────────────────┐
+  │ Gemini Embedding Model   │
+  │  (text-embedding-004)    │
+  └──────────┬───────────────┘
+             │ store vectors
+             ▼
+       ┌────────────┐
+       │ Weaviate DB │
+       └─────┬──────┘
+             │ retrieve_similar()
+             ▼
+   ┌────────────────────┐
+   │ Gemini 2.0 Flash    │
+   └────────────────────┘
+
+🗂️ Folder Structure
+voice-agent/
+│
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── config.py
+│   │   ├── models.py
+│   │   ├── services/
+│   │   │   ├── rag.py
+│   │   │   ├── extractor.py
+│   │   │   ├── embeddings.py
+│   │   │   ├── weaviate_client.py
+│   │   └── uploads/
+│   ├── requirements.txt
+│   └── .env
+│
+└── frontend/
+    ├── src/
+    │   ├── App.jsx
+    │   ├── components/
+    │   │   ├── ChatInterface.jsx
+    │   │   ├── UploadPage.jsx
+    ├── .env
+    ├── package.json
+
+⚙️ Setup Instructions
+🧩 1. Backend Setup (FastAPI)
+Install dependencies:
 cd backend
-cp .env.example .env
-# edit .env with your keys:
-# GEMINI_API_KEY, WEAVIATE_URL, WEAVIATE_API_KEY
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+🟦 2. Create .env inside backend/
+GEMINI_API_KEY="your_gemini_key"
+
+WEAVIATE_URL="https://your-cluster.weaviate.network"
+WEAVIATE_API_KEY="your_weaviate_key"
+
+API_HOST=0.0.0.0
+API_PORT=8000
+
+▶️ 3. Start Backend
+uvicorn app.main:app --reload
+
+
+Backend runs at:
+
+👉 http://localhost:8000
+
+🟩 4. Frontend Setup (React + Vite)
+cd frontend
+npm install
+
+Create frontend/.env:
+VITE_API_BASE_URL="http://localhost:8000"
+
+Start frontend
+npm run dev
+
+
+Frontend runs at:
+
+👉 http://localhost:5173
+
+🧠 RAG Pipeline Explained
+1. User uploads PDF/DOCX/TXT
+
+→ Backend extracts text
+
+2. chunk_text()
+
+→ Splits into overlapping chunks
+
+3. embed_text()
+
+→ Uses Gemini model: text-embedding-004
+
+4. store_document()
+
+→ Saves chunks + vectors into Weaviate
+
+5. User asks a question
+
+→ retrieve_similar(query) performs vector search
+
+6. Gemini 2.0 Flash
+
+→ Answers using ONLY retrieved chunks
+→ If answer not found → returns fallback:
+
+"I don't have enough information to answer this from the uploaded document."
+
+🔁 Reset System
+
+The reset button:
+
+Deletes all vectors from Weaviate
+
+Deletes uploads folder
+
+Recreates schema
+
+Clears UI
+
+Backend endpoint:
+
+POST /api/reset
+
+📡 API Endpoints
+Method	Endpoint	Description
+POST	/api/upload	Uploads document
+POST	/api/chat	Sends a query through RAG
+POST	/api/reset	Clears all data
+GET	/	Health check
+🧾 Backend Requirements
+
+requirements.txt example:
+
+fastapi
+uvicorn[standard]
+python-dotenv
+aiofiles
+pydantic-settings
+weaviate-client
+google-generativeai
+pymupdf
+python-docx
